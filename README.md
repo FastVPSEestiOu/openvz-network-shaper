@@ -9,3 +9,10 @@ Compatilbility:
 * Parallels Cloud Server
 * OpenVZ/RHEL5 2.6.18
 * OpenVZ/RHEL6 2.6.32
+
+
+FAQ
+* License? BSD
+* What protocols supported? IPv4 and IPv6
+* Did you have support for multiple IPs per containter? Yes!
+* How I can manage speed for different CT? You need change only one Perl function.
