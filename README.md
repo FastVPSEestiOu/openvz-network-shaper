@@ -1,9 +1,6 @@
-This script
-
+This script can restrict both incoming and outgoing speed for openvz (OpenVZ 2.6.18 and 2.6.32 supported) containters for IPv4 and IPv6 support.
 
 Author: Pavel Odintsov / pavel.odintsov [at] gmail.com
-
-This script can restrict both incoming and outgoing speed for openvz (OpenVZ 2.6.18 and 2.6.32 supported) containters for IPv4 and IPv6 support.
 
 Compatilbility:
 * Parallels Cloud Server
