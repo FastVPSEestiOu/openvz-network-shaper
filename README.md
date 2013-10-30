@@ -13,3 +13,8 @@ FAQ
 * What protocols supported? IPv4 and IPv6
 * Did you have support for multiple IPs per containter? Yes!
 * How I can manage speed for different CT? You need change only one Perl function.
+
+Installing
+* Put fastvps_openvz_shaper.pl into PATH folder (e.g. /usr/bin)
+* Put fastvps_openvz_shaper_config to /etc/ folder (it's config with some logic)
+* Change Perl subroutine in fastvps_openvz_shaper_config to your speed determining logic
