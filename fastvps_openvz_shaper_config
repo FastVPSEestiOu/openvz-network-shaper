@@ -5,135 +5,74 @@ use warnings;
 
 my $ve_config_path = '/etc/vz/conf';
 
-my $openvz_plan_binding = {
+our $openvz_plan_binding = {
     '400'  => 'ovz-1',
     '800'  => 'ovz-2',
-    '1200' => 'ovz-3',
-    '1600' => 'ovz-4',
-    '2000' => 'ovz-5',
-    '2400' => 'ovz-6',
-    '1500' => 'vip-ovz',
-    '8000' => 'fps-1',
-    '16000'=> 'fps-2',
-    '24000'=> 'fps-3',
 };
 
 my $plan_speed_binding = {
     'ovz-1'   => '20000',
     'ovz-2'   => '20000',
-    'ovz-3'   => '25000',
-    'ovz-4'   => '25000',
-    'ovz-5'   => '30000',
-    'ovz-6'   => '30000',
-    'vip-ovz' => '30000',
-    'fps-1'   => '50000',
-    'fps-2'   => '50000',
-    'fps-3'   => '50000',
 };
 
-sub get_plan_name_by_oomguarpages {
-    my $oom_guar_pages = shift;
-
-    unless ($oom_guar_pages) {
-        return '';
-    }
-
-    # А теперь мегаизврат, по объему гарантированной памяти определяем тариф
-    if ($openvz_plan_binding->{$oom_guar_pages}) {
-        return $openvz_plan_binding->{$oom_guar_pages};
-    } else {
-        return '';
-    }
-}
-
+# Если не смогли определить, то лимит все равно выдать лимит, без лимита нельзя - на гигабитном линке это чревато
+my $default_speed = "30000";
 
 sub get_speed_by_ctid {
     my $ve = shift;
 
-    my $distro = `cat /etc/redhat-release|awk '{print \$1}'`;
-    chomp $distro;
-
-    # Тут будет либо centos либо cloudlinux
-    $distro = lc $distro;
-
-    # это служебный контейнер на Parallels Cloud Server, сама нода
+    # это служебный контейнер на Parallels Cloud Server
     if ($ve eq '1') {
-        next;
+        return $default_speed;
     }
 
-    # Это VE для Repair режима, они хорошие, их не надо лимитировать
+    # Это VE для Repair режима, они хорошие, но их тоже надо лимитировать
     # Примеры VEID: 10000000, 10000001 ... 
     if ($ve =~ m/^100000$/) {
-        next;
+        return $default_speed;
     }
 
-    my $ve_config = load_config_file_into_hash("$ve_config_path/$ve.conf");
     my $plan_name = '';
 
-    if ($distro eq 'centos') {
-        # Для центоса конфиг получаем эвристически 
-        my $memory_limit_in_megabytes = '';
-
-        if (defined $ve_config->{OOMGUARPAGES}) {
-            $memory_limit_in_megabytes = $ve_config->{OOMGUARPAGES} * 4/1024;
-        } elsif (defined $ve_config->{PHYSPAGES}) {
-            $memory_limit_in_megabytes = (split /:/, $ve_config->{PHYSPAGES})[1] * 4/1024;
-        } else {
-            # can't determine plan name
-        }
-
-        $plan_name = get_plan_name_by_oomguarpages($memory_limit_in_megabytes);
-    } elsif ($distro eq 'cloudlinux') {
-        # То есть всех срезаем на 50 мегабит
-        $plan_name = 'fps-1';
+    my $memory_limit = get_physpages_limit_for_ct($ve);
+    
+    unless ($memory_limit) {
+        warn "Can't get physpages limit for $ve";
+        return $default_speed;
     }
 
+    # Конвертируем лимит памяти в мегабайты
+    my $memory_limit_in_megabytes = $memory_limit * 4096 / 1024 ** 2;
+
+    $plan_name = $openvz_plan_binding->{$memory_limit_in_megabytes};
 
     unless ($plan_name) {
-        warn "Can't get plan name for $ve\n";
-        return 0;
+        warn "Can't get plan name for $ve with memory limit: $memory_limit_in_megabytes\n";
+        return $default_speed;
     }
 
     my $ve_speed = $plan_speed_binding->{$plan_name};
 
+    unless ($ve_speed) {
+        warn "Can't get channel speed for $plan_name for container $ve";
+        return $default_speed;
+    }
+
     return $ve_speed;
 }
 
-sub load_config_file_into_hash {
-    my $file_name = shift;
+sub get_physpages_limit_for_ct {
+    my $ctid = shift;
 
-    my $ct_config_hash = {}; 
-    open my $ct_config, '<', $file_name or die "Can't open config  $!";
+    my $physpages_limit_raw = `/usr/sbin/vzlist -H -ophyspages.l $ctid`;
+    chomp $physpages_limit_raw;
 
-    foreach(<$ct_config>){
-        if (/^\s*(\w+)="(.*?)"/) {
-            my ($key, $value) = ($1, $2);
+    for ($physpages_limit_raw) {
+        s/\s+$//g;
+        s/^\s+//g;
+    }   
 
-            if ($value =~ /\s+/) {
-                $ct_config_hash->{$key} = [ split /\s+/, $value ];
-            } else {
-                $ct_config_hash->{$key} = $value;
-            }   
-
-            if ($ct_config_hash->{'OOMGUARPAGES'} && $ct_config_hash->{'OOMGUARPAGES'} !~ /^\d+$/) {
-                my ($barrier, $limit) = split /:/, $ct_config_hash->{'OOMGUARPAGES'};
-    
-                if ($barrier != $limit) {
-                    die "OOMGUARPAGES barrier and limit is not equal for $file_name\n";
-                }   
-
-                $ct_config_hash->{'OOMGUARPAGES'} = $limit;
-            }   
-
-            if (ref $ct_config_hash->{'IP_ADDRESS'} ne 'ARRAY') {
-                # это будет в случае, если IP адрес один, для унификации положим его в массив
-                $ct_config_hash->{'IP_ADDRESS'} = [ $ct_config_hash->{'IP_ADDRESS'} ];
-            }   
-        }   
-
-    }
-
-    return $ct_config_hash;
+    return $physpages_limit_raw;
 }
 
 1;
