@@ -10,7 +10,7 @@ Compatilbility:
 
 Features:
 * Complete IPv4 and IPv6 traffic shaping
-* Very fast hash based filetring rules (only 2 lookups for thousands of filters)
+* Very fast hash based filtering rules (only 2 lookups for thousands of filters)
 * Incoming and outgoing traffic shaping (please be very careful with INCOMING shaping features!)
 
 FAQ
