@@ -24,6 +24,7 @@ FAQ
 * How I can manage speed for different CT? You need change only one Perl function.
 
 Installing
+* Install required Perl module: ```yum install -y perl-Net-CIDR-Lite```
 * Put fastvps_openvz_shaper.pl into PATH folder (e.g. /usr/bin)
 * Put fastvps_openvz_shaper_config to /etc/ folder (it's config with some logic)
 * Change Perl subroutine in fastvps_openvz_shaper_config to your speed determining logic (by default all CT shaped to 30mbps)
