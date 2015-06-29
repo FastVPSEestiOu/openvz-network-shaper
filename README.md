@@ -17,6 +17,7 @@ Features:
 * Incoming and outgoing traffic shaping (please be very careful with INCOMING shaping feature!)
 
 FAQ
+* How much IP's I could have on single server? Tested up to few thousands 
 * What license? GPLv2 (please be careful because we changed license at 10 Nov 2014)
 * Do you have support for multiple IPs per containter? Yes!
 * Do you have support for IPv6? Yes, we have it!
